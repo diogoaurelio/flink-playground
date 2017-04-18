@@ -1,0 +1,1 @@
+fs.hdfs.hadoopconf: /home/<user>/.../playground/src/main/resources/hadoop-config

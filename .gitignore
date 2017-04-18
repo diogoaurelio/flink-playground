@@ -1,0 +1,36 @@
+# Custom
+src/main/resources/hadoop-config/core-site.xml
+local_tests
+src/main/resources/flink-config/flink-conf.yaml
+
+
+
+
+# Created by .ignore support plugin (hsz.mobi)
+### Example user template
+# IntelliJ project files
+.idea
+*.iml
+out
+gen### SBT template
+# Simple Build Tool
+# http://www.scala-sbt.org/release/docs/Getting-Started/Directories.html#configuring-version-control
+
+target/
+lib_managed/
+src_managed/
+project/boot/
+.history
+.cache
+### Scala template
+*.class
+*.log
+
+# sbt specific
+.lib/
+dist/*
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
