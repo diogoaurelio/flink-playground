@@ -21,6 +21,7 @@ val flinkDependencies = Seq(
   ,"org.apache.flink" %% "flink-clients" % flinkVersion % "provided"
   ,"org.apache.flink" %% "flink-connector-kafka-0.10" % flinkVersion % "provided"
   ,"org.apache.flink" %% "flink-connector-kinesis" % flinkVersion % "provided"
+  ,"org.apache.flink" %% "flink-connector-filesystem" % flinkVersion % "provided"
 
   // AWS deployment
   ,"com.amazonaws" % "aws-java-sdk" % awsVersion

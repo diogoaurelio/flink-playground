@@ -7,11 +7,13 @@ import org.apache.flink.streaming.api.scala._
 /**
   * Example shows basic read & write from/to S3
   *
-  * Requires that user specifies:
-  *     a) S3 Bucket for the val DEFAULT_S3_BUCKET;
-  *     b) Uploads the file "flink-basic-read-from-s3.txt"
+  * Requires that user:
+  *     a) specifies S3 Bucket for the val DEFAULT_S3_BUCKET;
+  *
+  *     b) uploads the file "flink-basic-read-from-s3.txt"
   *        to the previous specified bucket (available in
   *        src/main/resources/)
+  *
   *     c) copy-pastes "core-site.xml" to "core-site.xml" located in
   *        directory src/main/resources/hadoop-config/  , AND enters
   *        AWS credentials
@@ -35,6 +37,9 @@ object BasicS3ReadWrite {
       * config setup
       */
     env.getConfig.setGlobalJobParameters(parameters)
+    // ONLY because we want to make things more comprehensive,
+    // we set parallelism only to 1
+    env.setParallelism(1)
 
     /**
       * Load from S3 as a Datastream
@@ -52,7 +57,7 @@ object BasicS3ReadWrite {
     counts print
 
     /**
-      * Write back to S3 as a Datastream
+      * Data Sink: Write back to S3 as a Datastream
       */
     counts.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
 
@@ -61,10 +66,10 @@ object BasicS3ReadWrite {
 
   }
 
-  def parseMap(line : String): (String, String) = {
+  private def parseMap(line : String): (String, String) = {
     val record = line.substring(1, line.length - 1).split(",")
     (record(0), record(1))
   }
 
-  def uuid = java.util.UUID.randomUUID.toString
+  private def uuid = java.util.UUID.randomUUID.toString
 }
