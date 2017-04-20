@@ -16,7 +16,7 @@ lazy val hadoopVersion = "2.7.2"
 val flinkDependencies = Seq(
   "org.apache.flink" %% "flink-scala" % flinkVersion % "provided"
   ,"org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided"
-  ,"org.apache.flink" %% "flink-hadoop-compatibility" % flinkVersion
+  //,"org.apache.flink" %% "flink-hadoop-compatibility" % flinkVersion
 
   ,"org.apache.flink" %% "flink-clients" % flinkVersion % "provided"
   ,"org.apache.flink" %% "flink-connector-kafka-0.10" % flinkVersion % "provided"
@@ -39,7 +39,7 @@ lazy val root = (project in file(".")).
     libraryDependencies ++= flinkDependencies
   )
 
-mainClass in assembly := Some("com.berlinsmartdata.Job")
+mainClass in assembly := Some("com.berlinsmartdata.S3.BasicS3ReadWrite")
 
 // make run command include the provided dependencies
 run in Compile <<= Defaults.runTask(fullClasspath in Compile, mainClass in (Compile, run), runner in (Compile, run))

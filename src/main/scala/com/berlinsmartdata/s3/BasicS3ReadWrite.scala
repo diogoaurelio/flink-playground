@@ -42,12 +42,20 @@ object BasicS3ReadWrite {
     env.setParallelism(1)
 
     /**
+      * (Optionally) Uncomment next in order to build content, instead of
+      * reading from S3
+      */
+/*    val text = env.fromElements("To be, or not to be,--that is the question:--",
+      "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
+      "Or to take arms against a sea of troubles,")*/
+
+    /**
       * Load from S3 as a Datastream
       *
       * NOTE: make sure you upload the file "flink-basic-read-from-s3.txt"
       *       available in resources to the S3 Bucket you specified
       */
-    val text: DataStream[String] = env.readTextFile(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_INPUT_FILE_NAME}")
+    val text = env.readTextFile(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_INPUT_FILE_NAME}")
 
     val counts = text.flatMap { _.toLowerCase.split("\\W+") filter { _.nonEmpty } }
       .map { (_, 1) }
@@ -64,11 +72,6 @@ object BasicS3ReadWrite {
     // execute program
     env.execute("Flink Scala - Basic read & write to S3")
 
-  }
-
-  private def parseMap(line : String): (String, String) = {
-    val record = line.substring(1, line.length - 1).split(",")
-    (record(0), record(1))
   }
 
   private def uuid = java.util.UUID.randomUUID.toString

@@ -4,7 +4,9 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
-import org.apache.flink.streaming.connectors.fs.{DateTimeBucketer, RollingSink}
+import org.apache.flink.streaming.connectors.fs.{DateTimeBucketer}
+import org.apache.flink.streaming.api.scala._
+
 
 
 object RollingSinkS3Write {
@@ -53,7 +55,7 @@ object RollingSinkS3Write {
       *
       */
     val hdfsSink = new BucketingSink[String]("s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
-    hdfsSink.setBucketer(new DateTimeBucketer("yyyy-MM-dd--HHmm"))
+    //hdfsSink.setBucketer(new DateTimeBucketer("yyyy-MM-dd--HHmm"))
 
     countStream.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
 

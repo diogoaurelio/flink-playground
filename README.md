@@ -57,7 +57,27 @@ addSink - Invokes a custom sink function. Flink comes bundled with connectors to
 
 
 
-## Custom Sinks
+## Custom Sinks - [HDFS Connector](https://ci.apache.org/projects/flink/flink-docs-release-1.3/dev/connectors/filesystem_sink.html)
+
+In order to write partitioned Files to any file system - be it HDFS or S3 - Flink provides a specific connector, namely the HDFS connector.
+
+To use it in sbt, add "flink-connector-filesystem" dependency in build.sbt:
+```
+val flinkDependencies = Seq(
+  "org.apache.flink" %% "flink-scala" % flinkVersion % "provided"
+  ,"org.apache.flink" %% "flink-connector-filesystem" % flinkVersion % "provided"
+```
+
+The HDFS Connector uses the BucketingSink SinkFunction, as the following generic example shows:
+```{scala}
+val env = StreamExecutionEnvironment.createLocalEnvironment()
+
+// Create a DataStream from a list of elements
+val myInts = env.fromElements(1, 2, 3, 4, 5)
+
+val input: DataStream[String] = env.fromCollection(data)
+input.addSink(new BucketingSink[String]("/base/path"))
+```
 
 As stated in the code documentation: 
 "
@@ -65,3 +85,5 @@ The {@code BucketingSink} can be writing to many buckets at a time, and it is re
  * a set of active buckets. Whenever a new element arrives it will ask the {@code Bucketer} for the bucket
  * path the element should fall in.
 "
+
+It substitutes the previous and since Flink 1.2 deprecated class "RollingSink".
