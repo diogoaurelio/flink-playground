@@ -18,15 +18,42 @@ To run in intellij, set flink configuration directory as an environmental variab
 FLINK_CONF_DIR=/home/<user>/flink-config
 
 
-### Common issues
+### Common issues running examples
  
-1) Exception in thread "main" java.lang.NoClassDefFoundError: org/apache/flink/api/common/ExecutionConfig$GlobalJobParameters
+1) java.lang.NoClassDefFoundError
+
+```
+Exception (...) Caused by: java.lang.NoClassDefFoundError: org/apache/flink/api/common/ExecutionConfig$GlobalJobParameters
+```
+
 This is probably due to the fact that you are running from intellij/terminal, and do not have all classes loaded into the class path. In other words, NOT all required Flink dependencies were implicitely loaded.
 In order to run your application from within IntelliJ, you have to select the classpath of the 'mainRunner' module in the run/debug configurations. Simply open 'Run -> Edit configurations...' and then select 'mainRunner' from the Use classpath of module dropbox.
 
-2) Caused by: java.io.IOException: No file system found with scheme s3, referenced in file URI 's3://YOUR-BUCKET-HERE/flink-basic-read-from-s3.txt'.
+2) java.lang.ClassNotFoundException
+```
+Exception (...) Caused by: java.lang.ClassNotFoundException: org.apache.flink.api.common.typeinfo.TypeInformation
+```
+Same as point 1.
+
+3) 
+```
+Exception (...) Caused by: java.io.IOException: No file system found with scheme s3, referenced in file URI 's3://YOUR-BUCKET-HERE/flink-basic-read-from-s3.txt'.
+```
 This is probably due to the fact that you have not specified your hadoop conf in environment variables. go ahead and add environment variable 
 HADOOP_CONF_DIR=/PATH-TO-THIS-REPO/playground/src/main/resources/hadoop-config
+
+
+
+
+
+# Flink Basics
+
+Aggregations on Datastreams are different from aggregations on Datasets, as they are meant to be infinite. 
+Thus, it logically follows that one cannot, for example, count all elements in a Datastream.
+
+Thus windowed aggregations play a specially relevant role in Datastreams - as a means of setting bounds.
+
+
 
 # Notes: Lazy Evaluation
 "

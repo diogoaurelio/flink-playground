@@ -1,6 +1,7 @@
 package com.berlinsmartdata.local
 
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
 
 /**
   * Example shows basic read & write from/to local file system
@@ -9,7 +10,7 @@ import org.apache.flink.streaming.api.scala._
   * Note: this example is useful for unit testing purposes
   */
 
-object BucketingSinkFunction {
+object BucketingSinkWrite {
 
 
   def main(args: Array[String]): Unit = {
@@ -22,10 +23,6 @@ object BucketingSinkFunction {
     val text = env.fromElements("To be, or not to be,--that is the question:--",
       "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
       "Or to take arms against a sea of troubles,")
-
-
-    val ints = env.fromElements(1, 2, 3, 4, 5)
-    //val countInts = ints.filter(x => x % 2 == 0).sum(0)
 
     val counts = text.flatMap {
       _.toLowerCase.split("\\W+") filter {
@@ -41,20 +38,17 @@ object BucketingSinkFunction {
     counts print
 
     /**
-      * Data Sink: Write back to filesystem as a Datastream
+      * Data Sink: Partitioned write to S3
+      *
+      * Note: Since Flink 1.2, BucketingSink substitutes
+      *       RollingSink implementation
+      *
       */
-    counts.writeAsText(s"/tmp/${this.getClass.getCanonicalName}/test-${uuid}.txt")
 
-    //    val sink = new BucketingSink[String](s"/tmp/${this.getClass}/test.txt")
-    //    sink.setBucketer(new DateTimeBucketer[String]("yyyy-MM-dd--HHmm"))
-    //    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB,
-    //
-    //    input.addSink(sink)
+    val sink = new BucketingSink[(String, Int)](s"/tmp/testBucketSink/")
+    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
 
-    //    val sink = new BucketingSink[String]("/base/path")
-    //    sink.setBucketer(new Bucketer("yyyy-MM-dd--HHmm"))
-    //    //sink.setWriter(new SequenceFileWriter[IntWritable, Text]())
-    //    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - the default part file size is 384 MB
+    counts.addSink(sink)
 
 
     // execute program

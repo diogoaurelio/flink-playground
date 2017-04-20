@@ -18,7 +18,6 @@ import org.apache.flink.streaming.api.scala._
   *        directory src/main/resources/hadoop-config/  , AND enters
   *        AWS credentials
   *
-  *
   */
 object BasicS3ReadWrite {
 
@@ -40,14 +39,6 @@ object BasicS3ReadWrite {
     // ONLY because we want to make things more comprehensive,
     // we set parallelism only to 1
     env.setParallelism(1)
-
-    /**
-      * (Optionally) Uncomment next in order to build content, instead of
-      * reading from S3
-      */
-/*    val text = env.fromElements("To be, or not to be,--that is the question:--",
-      "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
-      "Or to take arms against a sea of troubles,")*/
 
     /**
       * Load from S3 as a Datastream

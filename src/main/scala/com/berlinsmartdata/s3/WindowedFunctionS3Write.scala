@@ -1,18 +1,36 @@
 package com.berlinsmartdata.s3
 
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
-import org.apache.flink.streaming.connectors.fs.{DateTimeBucketer}
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.time.Time
 
 
+/**
+  * Example shows example Tumbling Window aggregation & write to S3
+  * More on Flink Window Functions:
+  *       https://ci.apache.org/projects/flink/flink-docs-release-1.2/dev/windows.html
+  *
+  * Requires that user:
+  *     a) starts a netcat session in the terminal - BEFORE running this code -
+  *        via the following command:
+  *        nc -lk 9999
+  *
+  *     b) in the same terminal window type messages, that will be aggregated
+  *        by Flink
+  *
+  *     c) copy-pastes "core-site.xml" to "core-site.xml" located in
+  *        directory src/main/resources/hadoop-config/  , AND enters
+  *        AWS credentials (if you have done that already once previously,
+  *        no need to repeat it)
+  *
+  *     d) specifies S3 Bucket for the val DEFAULT_S3_BUCKET;
+  *
+  *
+  */
+object WindowedFunctionS3Write {
 
-object RollingSinkS3Write {
   // DEFAULT_S3_BUCKET = YOUR-BUCKET-HERE (please substitute with your own bucket for testing purposes)
   lazy val DEFAULT_S3_BUCKET = "9-labs"
-  lazy val DEFAULT_OUTPUT_FILE_NAME = "flink-websocketstream-write-to-s3"
 
   def main(args: Array[String]): Unit = {
 
@@ -24,8 +42,6 @@ object RollingSinkS3Write {
       * config setup
       */
     env.getConfig.setGlobalJobParameters(parameters)
-    // ONLY because we want to make things more comprehensive,
-    // we set parallelism only to 1
     env.setParallelism(1)
 
 
@@ -49,27 +65,15 @@ object RollingSinkS3Write {
 
     /**
       * Data Sink: Write back to S3 as a Datastream
-      *
-      * Note: Since Flink 1.2, BucketingSink substitutes
-      *       RollingSink implementation
-      *
       */
-    val hdfsSink = new BucketingSink[String]("s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
-    //hdfsSink.setBucketer(new DateTimeBucketer("yyyy-MM-dd--HHmm"))
-
-    countStream.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
-
+    countStream.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/testWindowedBucketSink/")
+    
     // execute program
     env.execute("Flink Scala - Windowed write to S3")
 
     // Note: once you terminate netcat session, Flink execution
     // will terminate gracefully and you'll be able to see S3 file on S3
 
-  }
-
-  private def parseMap(line : String): (String, String) = {
-    val record = line.substring(1, line.length - 1).split(",")
-    (record(0), record(1))
   }
 
   private def uuid = java.util.UUID.randomUUID.toString
