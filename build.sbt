@@ -32,6 +32,14 @@ val flinkDependencies = Seq(
   ,"org.apache.httpcomponents" % "httpcore" % "4.2.5"
   //,"org.apache.httpcomponents" % "httpclient" % "4.2.5"
 
+  ,"org.apache.avro" % "avro" % "1.7.7"
+  ,"org.apache.avro" % "avro-mapred" % "1.7.7"
+  ,"org.apache.parquet" % "parquet-avro" % "1.8.1"
+
+
+  // testing
+  ,"org.scalatest" %% "scalatest" % "2.2.4" % "test"
+
 )
 
 lazy val root = (project in file(".")).

@@ -50,34 +50,42 @@ object BucketingSinkS3Write {
     //Create streams for names and ages by mapping the inputs to the corresponding objects
     val text = env.socketTextStream("localhost", 9999)
 
+    val counts = mapOps(text)
 
-    val wordsStream = text.flatMap { _.toLowerCase.split("\\W+") filter { _.nonEmpty } }
-      .map { (_, 1) }
-
-
-    // finally specify how to aggregate the streams, in this case by the right
-    // side of the tuple (word, 1)
-    val countStream = wordsStream.keyBy(0).sum(1)
-
-    /**
-      * Data Sink: Partitioned write to S3
-      *
-      * Note: Since Flink 1.2, BucketingSink substitutes
-      *       RollingSink implementation
-      *
-      */
-    val sink = new BucketingSink[(String, Int)](s"s3://${DEFAULT_S3_BUCKET}/testBucketSink/")
-
-    countStream.addSink(sink)
+    mapSink(counts)
 
     // execute program
     env.execute("Flink Scala - Windowed write to S3")
 
     // Note: once you terminate netcat session, Flink execution
     // will terminate gracefully and you'll be able to see S3 file on S3
-
   }
 
-  private def uuid = java.util.UUID.randomUUID.toString
+  def mapOps(data: DataStream[String]): DataStream[(String, Int)] = {
+    val counts = data.flatMap {
+      _.toLowerCase.split("\\W+").filter {
+        _.nonEmpty
+      }
+    }
+      .map {
+        (_, 1)
+      }
+      .keyBy(0)
+      .sum(1)
+    counts.print()
+    counts
+  }
 
+  /**
+    * Data Sink: Partitioned write to File System/S3
+    *
+    * Note: Since Flink 1.2, BucketingSink substitutes
+    *       RollingSink implementation
+    *
+    */
+  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testBucketSink/") {
+    val sink = new BucketingSink[(String, Int)](path)
+    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
+    data.addSink(sink)
+  }
 }

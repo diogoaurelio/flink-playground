@@ -12,7 +12,6 @@ import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
 
 object BucketingSinkWrite {
 
-
   def main(args: Array[String]): Unit = {
 
     val env = StreamExecutionEnvironment.createLocalEnvironment()
@@ -24,8 +23,18 @@ object BucketingSinkWrite {
       "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
       "Or to take arms against a sea of troubles,")
 
-    val counts = text.flatMap {
-      _.toLowerCase.split("\\W+") filter {
+    val counts: DataStream[(String, Int)] = mapOps(text)
+
+    mapSink(counts)
+
+    // execute program
+    env.execute("Flink Scala - Basic read & write to filesystem")
+
+  }
+
+  def mapOps(data: DataStream[String]): DataStream[(String, Int)] = {
+    val counts = data.flatMap {
+      _.toLowerCase.split("\\W+").filter {
         _.nonEmpty
       }
     }
@@ -34,28 +43,21 @@ object BucketingSinkWrite {
       }
       .keyBy(0)
       .sum(1)
-
-    counts print
-
-    /**
-      * Data Sink: Partitioned write to S3
-      *
-      * Note: Since Flink 1.2, BucketingSink substitutes
-      *       RollingSink implementation
-      *
-      */
-
-    val sink = new BucketingSink[(String, Int)](s"/tmp/testBucketSink/")
-    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
-
-    counts.addSink(sink)
-
-
-    // execute program
-    env.execute("Flink Scala - Basic read & write to filesystem")
-
+    counts.print()
+    counts
   }
 
-  private def uuid = java.util.UUID.randomUUID.toString
+  /**
+    * Data Sink: Partitioned write to File System/S3
+    *
+    * Note: Since Flink 1.2, BucketingSink substitutes
+    *       RollingSink implementation
+    *
+    */
+  def mapSink(data: DataStream[(String, Int)], path: String = "/tmp/testBucketSink/") {
+    val sink = new BucketingSink[(String, Int)](path)
+    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
+    data.addSink(sink)
+  }
 
 }

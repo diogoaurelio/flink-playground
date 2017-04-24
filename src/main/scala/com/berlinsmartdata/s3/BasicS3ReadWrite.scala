@@ -30,7 +30,7 @@ object BasicS3ReadWrite {
 
     val parameters = ParameterTool.fromArgs(args)
 
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
     /**
       * config setup
@@ -48,21 +48,31 @@ object BasicS3ReadWrite {
       */
     val text = env.readTextFile(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_INPUT_FILE_NAME}")
 
-    val counts = text.flatMap { _.toLowerCase.split("\\W+") filter { _.nonEmpty } }
-      .map { (_, 1) }
-      .keyBy(0)
-      .sum(1)
-
-    counts print
+    val counts = mapOps(text)
 
     /**
       * Data Sink: Write back to S3 as a Datastream
       */
-    counts.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
+    counts.writeAsText(path = s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
 
     // execute program
     env.execute("Flink Scala - Basic read & write to S3")
 
+  }
+
+  def mapOps(data: DataStream[String]): DataStream[(String, Int)] = {
+    val counts = data.flatMap {
+      _.toLowerCase.split("\\W+").filter {
+        _.nonEmpty
+      }
+    }
+      .map {
+        (_, 1)
+      }
+      .keyBy(0)
+      .sum(1)
+    counts.print()
+    counts
   }
 
   private def uuid = java.util.UUID.randomUUID.toString
