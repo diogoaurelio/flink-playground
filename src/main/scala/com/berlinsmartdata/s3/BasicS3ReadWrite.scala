@@ -4,6 +4,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 
 
+
 /**
   * Example shows basic read & write from/to S3
   *
@@ -53,7 +54,7 @@ object BasicS3ReadWrite {
     /**
       * Data Sink: Write back to S3 as a Datastream
       */
-    counts.writeAsText(path = s"s3://${DEFAULT_S3_BUCKET}/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt")
+    mapSink(data = counts)
 
     // execute program
     env.execute("Flink Scala - Basic read & write to S3")
@@ -73,6 +74,14 @@ object BasicS3ReadWrite {
       .sum(1)
     counts.print()
     counts
+  }
+
+  /**
+    * Data Sink: Write back to S3 as a Datastream
+    */
+  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testBucketSink/${DEFAULT_OUTPUT_FILE_NAME}-${uuid}.txt"): String = {
+    data.writeAsText(path = path)
+    path
   }
 
   private def uuid = java.util.UUID.randomUUID.toString

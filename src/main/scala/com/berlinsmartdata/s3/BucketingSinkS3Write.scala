@@ -3,7 +3,7 @@ package com.berlinsmartdata.s3
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
-import org.apache.flink.streaming.connectors.fs.{DateTimeBucketer}
+import org.apache.flink.streaming.connectors.fs.DateTimeBucketer
 import org.apache.flink.streaming.api.scala._
 
 
@@ -34,7 +34,7 @@ object BucketingSinkS3Write {
 
     val parameters = ParameterTool.fromArgs(args)
 
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val env:StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
     /**
       * config setup
@@ -48,11 +48,13 @@ object BucketingSinkS3Write {
       * Setup websocket source
       */
     //Create streams for names and ages by mapping the inputs to the corresponding objects
-    val text = env.socketTextStream("localhost", 9999)
+    val text: DataStream[String] = env.socketTextStream("localhost", 9999)
 
     val counts = mapOps(text)
 
     mapSink(counts)
+    // output to a second Sink 8in this case, same bucket, just different partitioning
+    mapSink(path = s"s3://${DEFAULT_S3_BUCKET}/testBucketSink2/", data = counts)
 
     // execute program
     env.execute("Flink Scala - Windowed write to S3")

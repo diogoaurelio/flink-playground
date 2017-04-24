@@ -10,7 +10,6 @@ In order to run your application from within IntelliJ, you have to select the cl
 ### Flink setup for hadoop & S3 
 
 
-
 #### Add Flink conf as environment variable
 
 To run in intellij, set flink configuration directory as an environmental variable:
@@ -35,14 +34,26 @@ Exception (...) Caused by: java.lang.ClassNotFoundException: org.apache.flink.ap
 ```
 Same as point 1.
 
-3) 
+3) could not find implicit value for evidence parameter of type org.apache.flink.api.common.typeinfo.TypeInformation[String]
+
+This will prompt as a compilation error, even before you run your Application, such as, for example:
+```
+"Error:(15, 30) could not find implicit value for evidence parameter of type org.apache.flink.api.common.typeinfo.TypeInformation[String]
+  val text = env.fromElements("To be, or not to be,--that is the question:--",
+```
+
+Make sure you have this import statement on the top of your Flink Application:
+
+```{scala}
+import org.apache.flink.streaming.api.scala._
+```
+
+4) 
 ```
 Exception (...) Caused by: java.io.IOException: No file system found with scheme s3, referenced in file URI 's3://YOUR-BUCKET-HERE/flink-basic-read-from-s3.txt'.
 ```
 This is probably due to the fact that you have not specified your hadoop conf in environment variables. go ahead and add environment variable 
 HADOOP_CONF_DIR=/PATH-TO-THIS-REPO/playground/src/main/resources/hadoop-config
-
-
 
 
 
@@ -54,14 +65,73 @@ Thus, it logically follows that one cannot, for example, count all elements in a
 Thus windowed aggregations play a specially relevant role in Datastreams - as a means of setting bounds.
 
 
+## Batch VS Streaming
 
-# Notes: Lazy Evaluation
+Batch special case of streaming.
+
+How does the program recognize if it is running a batch or streaming context/environment? Easy, you define which type of execution context/environment you want. 
+
+For batch environment, one would do as follows:
+```{scala}
+import org.apache.flink.api.scala.ExecutionEnvironment
+
+val env: ExecutionEnvironment = ExecutionEnvironment.getExecutionEnvironment
+```
+
+Note: If you're familiar with spark, then this exactly equivalent to SparkContext(). 
+
+
+So, the program will implicitely know that it is in a batch environment, and further work with DataSet[T] API. In other words, when using ExecutionEnvironment, a DataSet[T] is automatically returned:
+
+```{scala}
+import org.apache.flink.api.scala.ExecutionEnvironment
+import org.apache.flink.api.scala.DataSet
+
+val env: ExecutionEnvironment = ExecutionEnvironment.getExecutionEnvironment
+val text: DataSet[String] = env1.fromElements("To be, or not to be,--that is the question:--",
+      "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
+      "Or to take arms against a sea of troubles,")
+```
+
+For streaming environment:
+```{scala}
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+
+val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+```
+
+Streaming environment work with DataStream[T], thus by setting env to StreamingExecutionEnvironment, the program automatically returns DataStream[T]:
+```{scala}
+ import org.apache.flink.api.scala.ExecutionEnvironment
+ import org.apache.flink.api.scala.DataSet
+ 
+ val env:StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+ val text: DataStream[String] = env1.fromElements("To be, or not to be,--that is the question:--",
+       "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
+       "Or to take arms against a sea of troubles,")
+```
+
+
+Finally, some useful sources used so far:
+- [Introduction to Apache Flink presentation from DataArtisans EIT ICT Summer School](http://ictlabs-summer-school.sics.se/2015/slides/flink-intro.pdf)
+
+
+## Lazy Evaluation
 "
 All Flink DataStream programs are executed lazily: When the program's main method is executed, the data loading and transformations do not happen directly. Rather, each operation is created and added to the program's plan. The operations are actually executed when the execution is explicitly triggered by an execute() call on the StreamExecutionEnvironment object. Whether the program is executed locally or on a cluster depends on the type of StreamExecutionEnvironment.
 The lazy evaluation lets you construct sophisticated programs that Flink executes as one holistically planned unit.
 "
 
-# Notes: Data Sinks
+Execution is only triggered in final line:
+
+```{scala}
+env.execute("My Flink application")
+```
+
+
+
+
+## Notes: Data Sinks
 
 "
 Data Sinks
@@ -114,3 +184,41 @@ The {@code BucketingSink} can be writing to many buckets at a time, and it is re
 "
 
 It substitutes the previous and since Flink 1.2 deprecated class "RollingSink".
+
+
+## Testing
+
+For easy testing Flink provides a third ExecutionEnvironment:
+
+```{scala}
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+
+// optionally define parallelism level for test simplification
+val env = StreamExecutionEnvironment.createLocalEnvironment(parallelism = 1)
+```
+
+Generating test data in the form of DataStream:
+
+```{scala}
+import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, DataStream}
+import org.apache.flink.contrib.streaming.DataStreamUtils
+import scala.collection.JavaConverters.asScalaIteratorConverter
+
+// 1) preparing a raw text, in order to test transformation operations
+val sampleText: DataStream[String] = env.fromElements("To be, or not to be,--that is the question:--",
+    "Whether 'tis nobler in the mind to suffer", "The slings and arrows of outrageous fortune",
+    "Or to take arms against a sea of troubles,")
+
+// 2) prepare expected result to check in the test based on a collection (already partiotioned text)
+val sampleSentence: Seq[(String, Int)] = Seq(("to", 2), ("be", 2), 
+("or", 1), ("not", 1), ("that", 1), ("is", 1), ("the", 1), ("question", 1))
+val sampleSentenceDataStream: DataStream[(String, Int)] = env.fromCollection(sampleSentence)
+
+val myOutput: Iterator[(String, Int)] = DataStreamUtils.collect(sampleSentenceDataStream.javaStream).asScala
+```
+
+Note that in order to use org.apache.flink.contrib.streaming.DataStreamUtils you will need to add the following dependency in build.sbt:
+
+```
+"org.apache.flink" %% "flink-streaming-contrib" % "1.2.0" % "provided"
+```

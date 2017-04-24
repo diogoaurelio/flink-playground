@@ -15,7 +15,7 @@ lazy val hadoopVersion = "2.7.2"
 
 val flinkDependencies = Seq(
   "org.apache.flink" %% "flink-scala" % flinkVersion % "provided"
-  ,"org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided"
+  ,"org.apache.flink" %% "flink-streaming-contrib" % flinkVersion % "provided"
   //,"org.apache.flink" %% "flink-hadoop-compatibility" % flinkVersion
 
   ,"org.apache.flink" %% "flink-clients" % flinkVersion % "provided"
@@ -29,9 +29,10 @@ val flinkDependencies = Seq(
 
   // Hadoop - S3 dependencies
   ,"org.apache.hadoop" % "hadoop-aws" % hadoopVersion
-  ,"org.apache.httpcomponents" % "httpcore" % "4.2.5"
+  //,"org.apache.httpcomponents" % "httpcore" % "4.2.5"
   //,"org.apache.httpcomponents" % "httpclient" % "4.2.5"
 
+  // Hadoop - Storage formats
   ,"org.apache.avro" % "avro" % "1.7.7"
   ,"org.apache.avro" % "avro-mapred" % "1.7.7"
   ,"org.apache.parquet" % "parquet-avro" % "1.8.1"
