@@ -1,12 +1,22 @@
 package com.berlinsmartdata.s3
 
+import com.berlinsmartdata.local_tests.ScalaWordCountDemo.WordCount
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.streaming.api.functions.windowing.WindowFunction
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindows, TumblingEventTimeWindows}
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.util.Collector
 
 
 /**
   * Example shows example Tumbling Window aggregation & write to S3
+  *
+  * This will create and output results to single file in S3. Data
+  * Streams written into file will be logically partitioned by a
+  * time window
+  *
   * More on Flink Window Functions:
   *       https://ci.apache.org/projects/flink/flink-docs-release-1.2/dev/windows.html
   *
@@ -39,11 +49,9 @@ object WindowedFunctionS3Write {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
 
     /**
-      * config setup
+      * Optionally add config setup
       */
     env.getConfig.setGlobalJobParameters(parameters)
-    env.setParallelism(1)
-
 
     /**
       * Setup websocket source
@@ -51,29 +59,71 @@ object WindowedFunctionS3Write {
     //Create streams for names and ages by mapping the inputs to the corresponding objects
     val text = env.socketTextStream("localhost", 9999)
 
-
-    val wordsStream = text.flatMap { _.toLowerCase.split("\\W+") filter { _.nonEmpty } }
-      .map { (_, 1) }
-
-    // Here we create a Tumbling Window, where the stream is discretized
-    // into non-overlapping windows split by a given time interval, and
-    // using the left side of tuple (word, 1) as a key
-    val windowStream = wordsStream.keyBy(0).timeWindow(Time.seconds(3))
-    // finally specify how to aggregate the streams, in this case by the right
-    // side of the tuple (word, 1)
-    val countStream = windowStream.sum(1)
+    val windowedCounts = mapOps(text)
 
     /**
       * Data Sink: Write back to S3 as a Datastream
       */
-    countStream.writeAsText(s"s3://${DEFAULT_S3_BUCKET}/testWindowedBucketSink/")
-    
+    mapSink(data = windowedCounts)
+
     // execute program
     env.execute("Flink Scala - Windowed write to S3")
 
     // Note: once you terminate netcat session, Flink execution
-    // will terminate gracefully and you'll be able to see S3 file on S3
+    // will terminate gracefully and you'll be able to see S3 file on S3;
+    // do not kill Flink, otherwise you will not see output results S3
+  }
 
+  /**
+    * Adds window aggregation
+    * @param data
+    * @param windowSize   seconds for window
+    *                     aggregation
+    * @return
+    */
+  def mapOps(data: DataStream[String], windowSize: Int = 3, offSet: Option[Int] = None): DataStream[(String, Int)] = {
+    val counts = data.flatMap {
+      _.toLowerCase.split("\\W+").filter {
+        _.nonEmpty
+      }
+    }
+      .map {
+        WordCount(_, 1)
+      }
+      .keyBy(0)
+      //.timeWindow(Time.seconds(windowSize))
+
+      .window(TumblingEventTimeWindows.of(Time.seconds(windowSize), Time.seconds(offSet.getOrElse(windowSize))))
+      .apply(new MyWindowFunction())
+      //.reduce( (a, b) => a.add(b) )
+
+      .sum(1)
+
+    counts.print()
+    counts
+  }
+
+  class MyWindowFunction extends WindowFunction[WordCount, String, String, TimeWindow] {
+    // either use java.lang.Iterable or use:
+    // import scala.collection.JavaConversions._
+    override def apply(key: String,
+                       window: TimeWindow,
+                       input: java.lang.Iterable[WordCount],
+                       out: Collector[String]): () = {
+      var count = 0L
+      for (in <- input) {
+        count = count + 1
+      }
+      out.collect(s"Window $window count: $count")
+    }
+  }
+
+  /**
+    * Data Sink: Write back to S3 as a Datastream
+    */
+  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testWindowedBucketSink/text-$uuid.txt"): String = {
+    data.writeAsText(path = path).setParallelism(1)
+    path
   }
 
   private def uuid = java.util.UUID.randomUUID.toString

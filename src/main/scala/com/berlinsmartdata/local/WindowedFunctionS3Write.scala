@@ -10,7 +10,7 @@ import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
   * Note: this example is useful for unit testing purposes
   */
 
-object WindowedBucketingSinkWrite {
+object WindowedFunctionS3Write {
 
 
   def main(args: Array[String]): Unit = {
@@ -52,7 +52,5 @@ object WindowedBucketingSinkWrite {
     env.execute("Flink Scala - Basic read & write to filesystem")
 
   }
-
-  private def uuid = java.util.UUID.randomUUID.toString
 
 }

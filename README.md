@@ -112,10 +112,6 @@ Streaming environment work with DataStream[T], thus by setting env to StreamingE
 ```
 
 
-Finally, some useful sources used so far:
-- [Introduction to Apache Flink presentation from DataArtisans EIT ICT Summer School](http://ictlabs-summer-school.sics.se/2015/slides/flink-intro.pdf)
-
-
 ## Lazy Evaluation
 "
 All Flink DataStream programs are executed lazily: When the program's main method is executed, the data loading and transformations do not happen directly. Rather, each operation is created and added to the program's plan. The operations are actually executed when the execution is explicitly triggered by an execute() call on the StreamExecutionEnvironment object. Whether the program is executed locally or on a cluster depends on the type of StreamExecutionEnvironment.
@@ -127,6 +123,47 @@ Execution is only triggered in final line:
 ```{scala}
 env.execute("My Flink application")
 ```
+
+## Operations
+
+### Data partitioning - Windows
+
+First basic distinction is two main types of windows: keyed and non-keyed windows.
+
+.window()
+operates on already partioned data, in this case keyed data. data Windows can be defined on already partitioned KeyedStreams.
+
+As provided in [Flink Blog post introducing stream windows](https://flink.apache.org/news/2015/12/04/Introducing-windows.html):
+```{scala}
+val input: DataStream[IN] = ...
+
+// created a keyed stream using a key selector function
+val keyed: KeyedStream[IN, KEY] = input
+  .keyBy(myKeySel: (IN) => KEY)
+  
+// create windowed stream using a WindowAssigner
+var windowed: WindowedStream[IN, KEY, WINDOW] = keyed
+  .window(myAssigner: WindowAssigner[IN, WINDOW])
+```
+
+Exception is .windowAll() which groups data according to some characteristic, such as data arrived in last X amount of time.
+However, beware in terms of performance: it is important to note that windowAll() is NOT a parallel operation, meaning that all records will be gathered in one task.
+
+
+Evictor or trigger will hand iterator (data belonging to a given logical window) to evaluation function. One can use either predefined functions for aggregation, 
+such as sum(), min(), max(), ReduceFunction(), FoldFunction(). Finally, there is also a generic window function not surprisingly called WindowFunction(), a trait 
+which one can further extend.
+
+
+## Event time
+
+[periodic watermark VS punctuated watermarks](http://stackoverflow.com/questions/41809228/watermarks-in-apache-flink)
+
+
+
+## Rich Functions
+
+Besides user-defined function (map, reduce, etc), rich functions provide four methods: open, close, getRuntimeContext, and setRuntimeContext.
 
 
 
@@ -222,3 +259,9 @@ Note that in order to use org.apache.flink.contrib.streaming.DataStreamUtils you
 ```
 "org.apache.flink" %% "flink-streaming-contrib" % "1.2.0" % "provided"
 ```
+
+# Useful resources
+Finally, some useful sources (most of them used as reference here):
+- [Introduction to Apache Flink presentation from DataArtisans EIT ICT Summer School](http://ictlabs-summer-school.sics.se/2015/slides/flink-intro.pdf)
+- [Flink Blog post introducing stream windows](https://flink.apache.org/news/2015/12/04/Introducing-windows.html)
+- [periodic watermark VS punctuated watermarks](http://stackoverflow.com/questions/41809228/watermarks-in-apache-flink)

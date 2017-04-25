@@ -5,19 +5,17 @@ import org.apache.flink.api.scala._
 import org.apache.flink.contrib.streaming.DataStreamUtils
 
 import scala.collection.JavaConverters.asScalaIteratorConverter
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import org.apache.hadoop.fs.Path
-import org.apache.hadoop.conf.Configuration
-import java.io.{BufferedReader, DataInputStream, InputStream, InputStreamReader}
+import org.scalatest.{FlatSpec, Matchers}
 
-import org.apache.hadoop.fs.s3a.S3AFileSystem
-import java.net.URI
+import java.io.{BufferedReader, InputStream, InputStreamReader}
 
 /**
-  * Note: this Spec also requires to have environment
+  * Note: this Spec also REQUIRES to have environment
   *       variable HADOOP_CONF_DIR set to /{YOUR-PATH-TO-THIS-REPO}/playground/src/main/resources/hadoop-config/
   */
-class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
+class BasicS3ReadWriteSpec extends FlatSpec with Matchers {
+
+  import com.berlinsmartdata.testutils.TestUtils._
 
   // file destination path
   lazy val destinationPath = "/tmp/unitTestingFlink/shakespeare-text.txt"
@@ -28,40 +26,9 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     "(or,1)", "(not,1)", "(to,2)", "(be,2)", "(that,1)", "(is,1)",
     "(the,1)", "(question,1)")
 
-  /** Hadoop Env - used to talk with AWS S3 */
-  val conf = new Configuration()
-  //val hadoop_conf_dir = getClass.getResource("/../../../../src/main/resources/hadoop-config/core-site.xml").toString
-  val hadoop_conf = this.getClass.getProtectionDomain.getCodeSource().getLocation().getPath() + "/../../../src/main/resources/hadoop-config/core-site.xml"
-  conf.addResource(new Path(hadoop_conf))
-
-  val s3fs = new S3AFileSystem()
-  val testURI = URI.create(defaultS3TestBucket)
-  s3fs.initialize(testURI, conf)
-
   /** Finally Flink Env */
-  val env = StreamExecutionEnvironment.createLocalEnvironment(parallelism = 1)
-
-  /** Test utility methods */
-
-  def uuid = java.util.UUID.randomUUID.toString
-
-  def getS3File(filename: String): InputStream = {
-    val path = new Path(filename)
-    //new DataInputStream(hadoopFileSystem.open(path))
-    new DataInputStream(s3fs.open(path))
-  }
-
-  def deleteS3File(filename: String): Boolean = {
-    val path = new Path(filename)
-    if (s3FileExists(filename))
-      s3fs.delete(path)
-    else
-      true
-  }
-
-  def s3FileExists(filename: String): Boolean = {
-    val path = new Path(filename)
-    s3fs.exists(path)
+  trait FlinkTestEnv {
+    val env = StreamExecutionEnvironment.createLocalEnvironment(parallelism = 1)
   }
 
   /**
@@ -71,14 +38,14 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     */
   def parseInputStream(result: InputStream, expectedCollection: Seq[String]): Unit = {
     val reader = new BufferedReader(new InputStreamReader(result))
-
-    var line = reader.readLine()
     var counter = 0
-    while(line != null) {
-      println("Line is: "+line)
-      line shouldBe expectedCollection(counter)
-      counter += 1
-      line = reader.readLine()
+    while(reader.ready) {
+      val line = reader.readLine
+      if (line != null) {
+        println("Line is: "+line)
+        line shouldBe expectedCollection(counter)
+        counter += 1
+      }
     }
   }
 
@@ -96,7 +63,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     * Tests start here
     */
 
-  it should "Count words in a DataStream in method mapOps" in {
+  it should "Count words in a DataStream in method mapOps" in new FlinkTestEnv {
 
     val textSample01 = env.fromElements("question question question")
     val expectedCollection: Seq[(String, Int)] = Seq(("question", 1), ("question", 2), ("question", 3))
@@ -108,7 +75,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     resultAsSeq shouldEqual(expectedCollection)
   }
 
-  it should "count only words in method mapOps" in {
+  it should "count only words in method mapOps" in new FlinkTestEnv {
     val textSample01 = env.fromElements("To be, or not to be,--that is the question:--")
 
     val expectedCollection: Seq[(String, Int)] = Seq(("to", 1), ("be", 1),
@@ -123,7 +90,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
     resultAsSeq shouldEqual(expectedCollection)
   }
 
-  it should "Save files into file system successfully" in {
+  it should "Save files into file system successfully" in new FlinkTestEnv {
     cleanUpFilesTestHelper(destinationPath)
 
     val testData: Seq[(String, Int)] = Seq(("to", 1), ("be", 1),
@@ -142,7 +109,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
   /**
     * Integration Test - save files to S3 using local credentials
     */
-  it should "Save files into AWS S3 successfully" in {
+  it should "Save files into AWS S3 successfully" in new FlinkTestEnv {
     val targetFile = s"$defaultS3TestBucket/testWriteToS3/test.txt"
     deleteS3File(targetFile)
 
@@ -164,7 +131,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers with BeforeAndAfterAll
 
   /** Integration test - test all main methods in job */
 
-  it should "transform and write successfully data" in {
+  it should "transform and write successfully data" in new FlinkTestEnv {
     cleanUpFilesTestHelper(destinationPath)
 
     val textSample01 = env.fromElements("To be, or not to be,--that is the question:--")
