@@ -1,6 +1,6 @@
 package com.berlinsmartdata.s3
 
-import com.berlinsmartdata.local_tests.ScalaWordCountDemo.WordCount
+import com.berlinsmartdata.model.WordCount
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.functions.windowing.WindowFunction
 import org.apache.flink.streaming.api.scala._
@@ -8,10 +8,11 @@ import org.apache.flink.streaming.api.windowing.assigners.{SlidingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
+import scala.collection.JavaConversions._
 
 
 /**
-  * Example shows example Tumbling Window aggregation & write to S3
+  * Example shows Window aggregation & write/sink to S3
   *
   * This will create and output results to single file in S3. Data
   * Streams written into file will be logically partitioned by a
@@ -81,7 +82,7 @@ object WindowedFunctionS3Write {
     *                     aggregation
     * @return
     */
-  def mapOps(data: DataStream[String], windowSize: Int = 3, offSet: Option[Int] = None): DataStream[(String, Int)] = {
+  def mapOps(data: DataStream[String], windowSize: Int = 3, offSet: Option[Int] = None): DataStream[WordCount] = {
     val counts = data.flatMap {
       _.toLowerCase.split("\\W+").filter {
         _.nonEmpty
@@ -93,8 +94,8 @@ object WindowedFunctionS3Write {
       .keyBy(0)
       //.timeWindow(Time.seconds(windowSize))
 
-      .window(TumblingEventTimeWindows.of(Time.seconds(windowSize), Time.seconds(offSet.getOrElse(windowSize))))
-      .apply(new MyWindowFunction())
+      //.window(TumblingEventTimeWindows.of(Time.seconds(windowSize), Time.seconds(offSet.getOrElse(windowSize))))
+      //.apply(new MyWindowFunction())
       //.reduce( (a, b) => a.add(b) )
 
       .sum(1)
@@ -109,7 +110,7 @@ object WindowedFunctionS3Write {
     override def apply(key: String,
                        window: TimeWindow,
                        input: java.lang.Iterable[WordCount],
-                       out: Collector[String]): () = {
+                       out: Collector[String]): Unit = {
       var count = 0L
       for (in <- input) {
         count = count + 1
@@ -121,7 +122,7 @@ object WindowedFunctionS3Write {
   /**
     * Data Sink: Write back to S3 as a Datastream
     */
-  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testWindowedBucketSink/text-$uuid.txt"): String = {
+  def mapSink(data: DataStream[WordCount], path: String = s"s3://${DEFAULT_S3_BUCKET}/testWindowedWrite/text-$uuid.txt"): String = {
     data.writeAsText(path = path).setParallelism(1)
     path
   }

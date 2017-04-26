@@ -1,14 +1,15 @@
 package com.berlinsmartdata.s3
 
+import com.berlinsmartdata.sinks.AvroSinkWriter
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.connectors.fs.bucketing.BucketingSink
-import org.apache.flink.streaming.connectors.fs.DateTimeBucketer
+import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTimeBucketer}
 import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.connectors.fs.SequenceFileWriter
 
 
 /**
-  * Example shows basic read & write from/to S3
+  * Example shows Flink using HDFS Connector with BucketingSink, with final sink to S3
   *
   * Requires that user:
   *     a) starts a netcat session in the terminal - BEFORE running this code -
@@ -85,9 +86,19 @@ object BucketingSinkS3Write {
     *       RollingSink implementation
     *
     */
-  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testBucketSink/") {
+  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testBucketingSink/") {
+    // TODO: org.apache.avro.specific.SpecificRecordBase
+    val avroSinkWriter = new AvroSinkWriter[(String, Int)]()
+
     val sink = new BucketingSink[(String, Int)](path)
-    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
-    data.addSink(sink)
+    sink.setBucketer(new DateTimeBucketer[(String, Int)]("yyyy/MM/dd/HH"))
+    sink.setInactiveBucketThreshold(60*60*1000) // 1h - timeout in milliseconds
+    //sink.setWriter(new Writer[(String, Int)]())
+    sink.setPendingPrefix("file-")
+    sink.setPendingSuffix(".avro")
+    sink.setBatchSize(1024 * 1024 * 128) // this is 128 MB - default is 384 MB
+    sink.setWriter(avroSinkWriter)
+
+    data.addSink(sink).setParallelism(1)
   }
 }
