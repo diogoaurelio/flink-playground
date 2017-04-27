@@ -1,15 +1,20 @@
 package com.berlinsmartdata.s3
 
-import com.berlinsmartdata.sinks.AvroSinkWriter
-import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTimeBucketer}
-import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.connectors.fs.SequenceFileWriter
 
+import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, _}
+import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTimeBucketer}
+import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import com.berlinsmartdata.model.{WordCount, WordCountWithTime}
+import com.berlinsmartdata.sinks.EventTimeBucketer
+import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
+import org.joda.time._
 
 /**
-  * Example shows Flink using HDFS Connector with BucketingSink, with final sink to S3
+  * Example shows Flink using HDFS Connector with BucketingSink,
+  * along with Window Function with final sink to S3
   *
   * Requires that user:
   *     a) starts a netcat session in the terminal - BEFORE running this code -
@@ -27,7 +32,7 @@ import org.apache.flink.streaming.connectors.fs.SequenceFileWriter
   *     d) specifies S3 Bucket for the val DEFAULT_S3_BUCKET;
   *
   */
-object BucketingSinkS3Write {
+object WindowedBucketingSinkS3Write {
   // DEFAULT_S3_BUCKET = YOUR-BUCKET-HERE (please substitute with your own bucket for testing purposes)
   lazy val DEFAULT_S3_BUCKET = "9-labs"
 
@@ -44,6 +49,8 @@ object BucketingSinkS3Write {
     // ONLY because we want to make things more comprehensive,
     // we set parallelism only to 1
     env.setParallelism(1)
+    // set event time processing
+    env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
 
     /**
       * Setup websocket source
@@ -54,7 +61,8 @@ object BucketingSinkS3Write {
     val counts = mapOps(text)
 
     mapSink(counts)
-    // output to a second Sink 8in this case, same bucket, just different partitioning
+    // Note: oyu can add how many sinks you want: in this case, we are
+    // outputing same result to a second Sink (same bucket, just different partitioning)
     mapSink(path = s"s3://${DEFAULT_S3_BUCKET}/testBucketSink2/", data = counts)
 
     // execute program
@@ -64,20 +72,32 @@ object BucketingSinkS3Write {
     // will terminate gracefully and you'll be able to see S3 file on S3
   }
 
-  def mapOps(data: DataStream[String]): DataStream[(String, Int)] = {
+  def mapOps(data: DataStream[String]): DataStream[WordCountWithTime] = {
     val counts = data.flatMap {
-      _.toLowerCase.split("\\W+").filter {
-        _.nonEmpty
+        _.toLowerCase.split("\\W+").filter {
+          _.nonEmpty
+        }
       }
-    }
-      .map {
-        (_, 1)
+      .map { s =>
+        val hr = scala.util.Random.nextInt(12)
+        val mm = scala.util.Random.nextInt(60)
+        val dt = new DateTime(DateTime.parse(s"2017-04-27T$hr:$mm:05Z"))
+        val unixTimeStamp: Long = dt.getMillis / 1000
+        WordCountWithTime(s, 1, unixTimeStamp, dt)
       }
-      .keyBy(0)
+
+    val withTimestampsAndWatermarks = counts.assignTimestampsAndWatermarks(new OutOfOrdernessDelayWatermark())
+
+    val timedCounts = withTimestampsAndWatermarks
+      .keyBy(0,2)
+      .timeWindow(Time.days(1))
       .sum(1)
-    counts.print()
-    counts
+
+    timedCounts.print()
+    timedCounts
   }
+
+
 
   /**
     * Data Sink: Partitioned write to File System/S3
@@ -86,19 +106,21 @@ object BucketingSinkS3Write {
     *       RollingSink implementation
     *
     */
-  def mapSink(data: DataStream[(String, Int)], path: String = s"s3://${DEFAULT_S3_BUCKET}/testBucketingSink/") {
-    // TODO: org.apache.avro.specific.SpecificRecordBase
-    //val avroSinkWriter = new AvroSinkWriter[(String, Int)]()
+  def mapSink(data: DataStream[WordCountWithTime], path: String = s"s3://${DEFAULT_S3_BUCKET}/testWindowedBucketingSink/") {
 
-    val sink = new BucketingSink[(String, Int)](path)
-    sink.setBucketer(new DateTimeBucketer[(String, Int)]("yyyy/MM/dd/HH"))
+    val sink = new BucketingSink[WordCountWithTime](path)
+    //sink.setBucketer(new DateTimeBucketer[WordCountWithTime]("yyyy/MM/dd/HH/mm"))
+    sink.setBucketer(new EventTimeBucketer[WordCountWithTime])
+
+    sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
     sink.setInactiveBucketThreshold(60*60*1000) // 1h - timeout in milliseconds
-    //sink.setWriter(new Writer[(String, Int)]())
     sink.setPendingPrefix("file-")
     sink.setPendingSuffix(".avro")
-    sink.setBatchSize(1024 * 1024 * 128) // this is 128 MB - default is 384 MB
-    //sink.setWriter(avroSinkWriter)
-
     data.addSink(sink).setParallelism(1)
+
   }
+}
+
+class OutOfOrdernessDelayWatermark extends BoundedOutOfOrdernessTimestampExtractor[WordCountWithTime](Time.seconds(3600)) {
+  override def extractTimestamp(element: WordCountWithTime): Long = element.time
 }

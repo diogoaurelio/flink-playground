@@ -1,12 +1,11 @@
 resolvers in ThisBuild ++= Seq("Apache Development Snapshot Repository" at "https://repository.apache.org/content/repositories/snapshots/", Resolver.mavenLocal)
 
-name := "playGround"
-
-version := "0.1-SNAPSHOT"
-
 organization := "com.berlinsmartdata"
-
+name := "playGround"
+version := "0.1-SNAPSHOT"
 scalaVersion in ThisBuild := "2.11.8"
+publishMavenStyle := true
+
 
 lazy val flinkVersion = "1.2.0"
 lazy val awsVersion = "1.7.4" //  "1.11.8"; ===> is "1.11.118" requirement?
@@ -23,6 +22,8 @@ val flinkDependencies = Seq(
   ,"org.apache.flink" %% "flink-connector-kinesis" % flinkVersion % "provided"
   ,"org.apache.flink" %% "flink-connector-filesystem" % flinkVersion % "provided"
 
+  //,"org.spire-math" %% "cats-core" % "0.1.0-SNAPSHOT"
+
   // AWS deployment
   ,"com.amazonaws" % "aws-java-sdk" % awsVersion
   ,"com.amazonaws" % "aws-java-sdk-sts" % "1.11.111"
@@ -34,8 +35,8 @@ val flinkDependencies = Seq(
 
   // Hadoop - Storage formats
   ,"org.apache.avro" % "avro" % "1.7.7"
-  ,"org.apache.avro" % "avro-mapred" % "1.7.7"
-  ,"org.apache.parquet" % "parquet-avro" % "1.8.1"
+  //,"org.apache.avro" % "avro-mapred" % "1.7.7"
+  //,"org.apache.parquet" % "parquet-avro" % "1.8.1"
 
 
   // testing
