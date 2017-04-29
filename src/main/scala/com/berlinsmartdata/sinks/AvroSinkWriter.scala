@@ -92,6 +92,61 @@ class AvroSinkWriter[T <: SpecificRecordBase : ClassTag] extends StreamWriterBas
   //    return CodecFactory.nullCodec();
   //  }
 
+
+  /*
+    private val specificDataPerClassLoader: HashMap[ClassLoader, SpecificData] = HashMap()
+  private def specificData = specificDataPerClassLoader.getOrElseUpdate(getClass.getClassLoader, new specific.SpecificData(getClass.getClassLoader))
+
+  def dataSetAsAvro[DS: SpecificRecordBase : ClassTag](ds: DS): Either[DataSetError, Array[Byte]] = {
+    ds match {
+      case Right(wdt: WordCountWithTime) => writeDataSetToAvro(wdt).asRight
+
+      case Left(_) => DataSetError(ds.toString, s"Unknow dataset: ${ds.getClass.getName}").asLeft
+    }
+  }
+
+
+  def writeDataSetToAvro[DS: SpecificRecordBase : ClassTag](ds: DS): Either[DataSetError, Array[Byte]] = {
+    writeDataSetToAvro(List(ds))
+  }
+
+  def writeDataSetToAvro[DS: SpecificRecordBase : ClassTag](dsl: List[DS])(implicit avroSpecificData: SpecificData = specificData): Either[DataSetError, Array[Byte]] = {
+    for {
+      schema <- extractSchemaFromType[DS]
+      r <- try {
+
+        val out = new ByteArrayOutputStream()
+        val dfw = new DataFileWriter[DS](avroSpecificData.createDatumWriter(schema).asInstanceOf[SpecificDatumWriter[DS]])
+
+        dfw.create(schema, out)
+        dsl.foreach(dfw.append)
+
+        dfw.close()
+
+        out.toByteArray.asRight
+      } catch {
+        case t: Throwable => DataSetError(if (dsl.size == 1) dsl.head.toString else dsl.toString, t.getMessage).asLeft
+      }
+    } yield r
+  }
+
+  private def extractSchemaFromType[D <: SpecificRecordBase : ClassTag]: Either[DataSetError, Schema] =
+    try {
+      val mirror = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
+      val moduleSymbol = mirror.staticModule(implicitly[ClassTag[D]].runtimeClass.getName)
+      val instanceMirror = mirror.reflect(mirror.reflectModule(moduleSymbol).instance)
+
+      val schemaVal = moduleSymbol.typeSignature.decls
+        .filter { _.asTerm.isVal }
+        .filter { _.name.toString.contains("SCHEMA$") }
+        .head
+
+      instanceMirror.reflectField(schemaVal.asTerm).get.asInstanceOf[Schema].asRight
+    } catch {
+      case t: Throwable => DataSetError("", t.getMessage).asLeft
+    }
+   */
+
 }
 
 object AvroSinkWriter {

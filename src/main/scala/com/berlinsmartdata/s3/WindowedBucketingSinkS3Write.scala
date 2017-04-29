@@ -8,7 +8,7 @@ import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTi
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import com.berlinsmartdata.model.{WordCount, WordCountWithTime}
-import com.berlinsmartdata.sinks.EventTimeBucketer
+import com.berlinsmartdata.sinks.{EventTimeBucketer, WordCountTimeBucketer}
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.joda.time._
 
@@ -110,7 +110,7 @@ object WindowedBucketingSinkS3Write {
 
     val sink = new BucketingSink[WordCountWithTime](path)
     //sink.setBucketer(new DateTimeBucketer[WordCountWithTime]("yyyy/MM/dd/HH/mm"))
-    sink.setBucketer(new EventTimeBucketer[WordCountWithTime])
+    sink.setBucketer(new WordCountTimeBucketer[WordCountWithTime])
 
     sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
     sink.setInactiveBucketThreshold(60*60*1000) // 1h - timeout in milliseconds

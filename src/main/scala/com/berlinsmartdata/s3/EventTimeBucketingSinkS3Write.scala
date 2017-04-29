@@ -9,14 +9,12 @@ import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTi
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import com.berlinsmartdata.model.{DataSetError, WordCount, WordCountWithTime}
-import com.berlinsmartdata.sinks.EventTimeBucketer
+import com.berlinsmartdata.sinks.{EventTimeBucketer, WordCountTimeBucketerViaReflection}
 import org.apache.avro.{Schema, specific}
 import org.apache.avro.file.DataFileWriter
 import org.apache.avro.specific.{SpecificData, SpecificDatumWriter, SpecificRecordBase}
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor
 import org.joda.time._
-
-import cats.implicits._
 
 import scala.collection.mutable.HashMap
 import scala.reflect.ClassTag
@@ -109,7 +107,7 @@ object EventTimeBucketingSinkS3Write {
   def mapSink(data: DataStream[WordCountWithTime], path: String = s"s3://${DEFAULT_S3_BUCKET}/testEventBucketingSink/") {
 
     val sink = new BucketingSink[WordCountWithTime](path)
-    sink.setBucketer(new EventTimeBucketer[WordCountWithTime])
+    sink.setBucketer(new WordCountTimeBucketerViaReflection[WordCountWithTime])
 
     sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
     sink.setInactiveBucketThreshold(60*60*1000) // 1h - timeout in milliseconds
@@ -118,55 +116,8 @@ object EventTimeBucketingSinkS3Write {
     data.addSink(sink).setParallelism(1)
   }
 
-  private val specificDataPerClassLoader: HashMap[ClassLoader, SpecificData] = HashMap()
-  private def specificData = specificDataPerClassLoader.getOrElseUpdate(getClass.getClassLoader, new specific.SpecificData(getClass.getClassLoader))
-
-  def dataSetAsAvro[DS: SpecificRecordBase : ClassTag](ds: DS): Either[DataSetError, Array[Byte]] = {
-    ds match {
-      case Right(wdt: WordCountWithTime) => writeDataSetToAvro(wdt).asRight
-
-      case Left(_) => DataSetError(ds.toString, s"Unknow dataset: ${ds.getClass.getName}").asLeft
-    }
-  }
 
 
-  def writeDataSetToAvro[DS: SpecificRecordBase : ClassTag](ds: DS): Either[DataSetError, Array[Byte]] = {
-    writeDataSetToAvro(List(ds))
-  }
 
-  def writeDataSetToAvro[DS: SpecificRecordBase : ClassTag](dsl: List[DS])(implicit avroSpecificData: SpecificData = specificData): Either[DataSetError, Array[Byte]] = {
-    for {
-      schema <- extractSchemaFromType[DS]
-      r <- try {
 
-        val out = new ByteArrayOutputStream()
-        val dfw = new DataFileWriter[DS](avroSpecificData.createDatumWriter(schema).asInstanceOf[SpecificDatumWriter[DS]])
-
-        dfw.create(schema, out)
-        dsl.foreach(dfw.append)
-
-        dfw.close()
-
-        out.toByteArray.asRight
-      } catch {
-        case t: Throwable => DataSetError(if (dsl.size == 1) dsl.head.toString else dsl.toString, t.getMessage).asLeft
-      }
-    } yield r
-  }
-
-  private def extractSchemaFromType[D <: SpecificRecordBase : ClassTag]: Either[DataSetError, Schema] =
-    try {
-      val mirror = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
-      val moduleSymbol = mirror.staticModule(implicitly[ClassTag[D]].runtimeClass.getName)
-      val instanceMirror = mirror.reflect(mirror.reflectModule(moduleSymbol).instance)
-
-      val schemaVal = moduleSymbol.typeSignature.decls
-        .filter { _.asTerm.isVal }
-        .filter { _.name.toString.contains("SCHEMA$") }
-        .head
-
-      instanceMirror.reflectField(schemaVal.asTerm).get.asInstanceOf[Schema].asRight
-    } catch {
-      case t: Throwable => DataSetError("", t.getMessage).asLeft
-    }
 }
