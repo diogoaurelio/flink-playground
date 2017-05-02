@@ -8,8 +8,8 @@ import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, _}
 import org.apache.flink.streaming.connectors.fs.bucketing.{BucketingSink, DateTimeBucketer}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
-import com.berlinsmartdata.model.{DataSetError, WordCount, WordCountWithTime}
-import com.berlinsmartdata.sinks.{EventTimeBucketer, WordCountTimeBucketerViaReflection}
+import com.berlinsmartdata.model.{DataSetError, WordCount, WordCountWithTime, WordCountWithTimeAvroFormat}
+import com.berlinsmartdata.sinks.{AvroSinkWriter, EventTimeBucketer, WordCountTimeBucketerViaReflection}
 import org.apache.avro.{Schema, specific}
 import org.apache.avro.file.DataFileWriter
 import org.apache.avro.specific.{SpecificData, SpecificDatumWriter, SpecificRecordBase}
@@ -75,7 +75,7 @@ object EventTimeBucketingSinkS3Write {
     // will terminate gracefully and you'll be able to see S3 file on S3
   }
 
-  def mapOps(data: DataStream[String]): DataStream[WordCountWithTime] = {
+  def mapOps(data: DataStream[String]): DataStream[WordCountWithTimeAvroFormat] = {
     val counts = data.flatMap {
         _.toLowerCase.split("\\W+").filter {
           _.nonEmpty
@@ -86,7 +86,7 @@ object EventTimeBucketingSinkS3Write {
         val mm = scala.util.Random.nextInt(10)
         val dt = new DateTime(DateTime.parse(s"2017-04-27T$hr:$mm:05Z"))
         val unixTimeStamp: Long = dt.getMillis / 1000
-        WordCountWithTime(s, 1, unixTimeStamp, dt)
+        WordCountWithTimeAvroFormat(s, 1, unixTimeStamp, dt.toString)
       }
       .keyBy(0,2)
       .sum(1)
@@ -104,11 +104,11 @@ object EventTimeBucketingSinkS3Write {
     *       RollingSink implementation
     *
     */
-  def mapSink(data: DataStream[WordCountWithTime], path: String = s"s3://${DEFAULT_S3_BUCKET}/testEventBucketingSink/") {
+  def mapSink(data: DataStream[WordCountWithTimeAvroFormat], path: String = s"s3://${DEFAULT_S3_BUCKET}/testEventBucketingSink/") {
 
-    val sink = new BucketingSink[WordCountWithTime](path)
-    sink.setBucketer(new WordCountTimeBucketerViaReflection[WordCountWithTime])
-
+    val sink = new BucketingSink[WordCountWithTimeAvroFormat](path)
+    sink.setBucketer(new WordCountTimeBucketerViaReflection[WordCountWithTimeAvroFormat])
+    sink.setWriter(new AvroSinkWriter[WordCountWithTimeAvroFormat])
     sink.setBatchSize(1024 * 1024 * 400) // this is 400 MB - default is 384 MB
     sink.setInactiveBucketThreshold(60*60*1000) // 1h - timeout in milliseconds
     sink.setPendingPrefix("file-")
