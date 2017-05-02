@@ -31,9 +31,16 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceCont
   * Note: this Spec also REQUIRES to have environment
   *       variable HADOOP_CONF_DIR set to /{YOUR-PATH-TO-THIS-REPO}/playground/src/main/resources/hadoop-config/
   */
-class WindowedFunctionS3WriteSpec extends FlatSpec with Matchers {
+class WindowedFunctionS3WriteSpec extends FlatSpec
+  with Matchers
+  with BeforeAndAfterAll {
 
-  import com.berlinsmartdata.testutils.TestUtils._
+  import com.berlinsmartdata.testutils.FsTestUtils._
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    initiS3
+  }
 
   // file destination path
   lazy val destinationPath = "/tmp/unitTestingFlinkWindowedFunction/shakespeare-text.txt"

@@ -30,7 +30,7 @@ val flinkDependencies = Seq(
 
   // Hadoop - S3 dependencies
   ,"org.apache.hadoop" % "hadoop-aws" % hadoopVersion
-  //,"org.apache.httpcomponents" % "httpcore" % "4.2.5"
+  ,"org.apache.httpcomponents" % "httpcore" % "4.2.5"
   //,"org.apache.httpcomponents" % "httpclient" % "4.2.5"
 
   // Hadoop - Storage formats

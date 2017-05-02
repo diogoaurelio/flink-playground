@@ -5,17 +5,30 @@ import org.apache.flink.api.scala._
 import org.apache.flink.contrib.streaming.DataStreamUtils
 
 import scala.collection.JavaConverters.asScalaIteratorConverter
-import org.scalatest.{FlatSpec, Matchers}
-
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, Matchers}
 import java.io.{BufferedReader, InputStream, InputStreamReader}
+import com.berlinsmartdata.testutils.FsTestUtils
 
 /**
   * Note: this Spec also REQUIRES to have environment
   *       variable HADOOP_CONF_DIR set to /{YOUR-PATH-TO-THIS-REPO}/playground/src/main/resources/hadoop-config/
   */
-class BasicS3ReadWriteSpec extends FlatSpec with Matchers {
+class BasicS3ReadWriteSpec extends FlatSpec
+  with Matchers
+  with BeforeAndAfterEach
+  with BeforeAndAfterAll {
 
-  import com.berlinsmartdata.testutils.TestUtils._
+  import com.berlinsmartdata.testutils.FsTestUtils._
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    FsTestUtils.initiS3
+  }
+
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    cleanUpFilesTestHelper()
+  }
 
   // file destination path
   lazy val destinationPath = "/tmp/unitTestingFlink/shakespeare-text.txt"
@@ -25,6 +38,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers {
   lazy val expectedTestCollection: Seq[String] = Seq("(to,1)", "(be,1)",
     "(or,1)", "(not,1)", "(to,2)", "(be,2)", "(that,1)", "(is,1)",
     "(the,1)", "(question,1)")
+
 
   /** Finally Flink Env */
   trait FlinkTestEnv {
@@ -49,7 +63,7 @@ class BasicS3ReadWriteSpec extends FlatSpec with Matchers {
     }
   }
 
-  def cleanUpFilesTestHelper(path: String) {
+  def cleanUpFilesTestHelper(path: String = destinationPath) {
     if (new java.io.File(path).exists) {
       try {
         new java.io.File(path).delete()

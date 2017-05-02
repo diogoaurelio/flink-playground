@@ -54,7 +54,7 @@ object EventTimeBucketingSinkS3Write {
       * config setup
       */
     env.getConfig.setGlobalJobParameters(parameters)
-    env.setParallelism(2)
+    env.setParallelism(10)
     // ONLY because we want to make things more comprehensive,
     // set event time processing
     env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime)
@@ -115,9 +115,6 @@ object EventTimeBucketingSinkS3Write {
     sink.setPendingSuffix(".avro")
     data.addSink(sink).setParallelism(1)
   }
-
-
-
 
 
 }
