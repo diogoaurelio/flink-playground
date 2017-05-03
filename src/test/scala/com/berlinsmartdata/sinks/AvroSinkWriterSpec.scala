@@ -8,18 +8,33 @@ import org.apache.avro.generic.{GenericDatumWriter, GenericRecord}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import java.io.File
-import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 
-class AvroSinkWriterSpec extends FlatSpec with Matchers with BeforeAndAfterEach {
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, Matchers}
+
+class AvroSinkWriterSpec extends FlatSpec
+  with Matchers
+  with BeforeAndAfterAll
+  with BeforeAndAfterEach {
 
   lazy val schema: Schema = WordCountWithTimeAvroFormat.SCHEMA$
   lazy val destinationPath: String = "/tmp/AvroSinkWriterSpec"
+  lazy val destinationDir: File = new File(destinationPath)
   lazy val avroFile = "testAvro.avro"
   lazy val finalTarget = s"$destinationPath/$avroFile"
+  val avroRegex: scala.util.matching.Regex = s""".avro""".r
+
+  override def beforeAll(): Unit = {
+    if(!destinationDir.exists)
+      destinationDir.mkdir
+  }
 
   override def afterEach(): Unit = {
-    val avroRegex: scala.util.matching.Regex = s""".avro""".r
     FsTestUtils.cleanUp(avroRegex, destinationPath)
+  }
+
+  override def afterAll(): Unit = {
+    if(destinationDir.exists)
+      destinationDir.deleteOnExit
   }
 
   def initializeWriter(schema: Schema = schema, targetPath: String = finalTarget): AvroSinkWriter[WordCountWithTimeAvroFormat] = {

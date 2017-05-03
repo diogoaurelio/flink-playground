@@ -100,7 +100,7 @@ object FsTestUtils {
         println(s"Cleaning up test file left behind: $file")
         file.delete()
       } catch {
-        case e: Exception => println(s"Failed to cleanup files after test: ${e.getMessage}")
+        case e: Exception => println(s"Failed to cleanup file ($file) after test: ${e.getMessage}")
       }
     }
   }

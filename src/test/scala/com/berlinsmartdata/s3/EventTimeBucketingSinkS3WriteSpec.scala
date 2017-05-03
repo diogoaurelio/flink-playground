@@ -1,18 +1,22 @@
 package com.berlinsmartdata.s3
 
+import java.io.File
+
 import com.berlinsmartdata.model.WordCountWithTimeAvroFormat
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.joda.time.DateTime
-import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, Matchers}
 import com.berlinsmartdata.testutils.FsTestUtils
 import org.apache.flink.api.scala._
 
 
 class EventTimeBucketingSinkS3WriteSpec extends FlatSpec
   with Matchers
+  with BeforeAndAfterAll
   with BeforeAndAfterEach {
 
   val destinationPath = "/tmp/unitTestingFlink"
+  val destinationDir: File = new File(destinationPath)
   val schema = WordCountWithTimeAvroFormat.SCHEMA$
   val yy = "2017"
   val mm = "04"
@@ -28,10 +32,20 @@ class EventTimeBucketingSinkS3WriteSpec extends FlatSpec
   val targetFile2avro = s"$targetPath2/$avroFile"
   val targetFile2crc = s"$targetPath2/$avroFileCrc"
 
+  override def beforeAll(): Unit = {
+    if(!destinationDir.exists)
+      destinationDir.mkdir
+  }
+
   override def afterEach(): Unit = {
     val avroRegex: scala.util.matching.Regex = s""".avro""".r
     FsTestUtils.cleanUp(avroRegex, targetPath1)
     FsTestUtils.cleanUp(avroRegex, targetPath2)
+  }
+
+  override def afterAll(): Unit = {
+    if(destinationDir.exists)
+      destinationDir.deleteOnExit
   }
 
   /** Finally Flink Env */
