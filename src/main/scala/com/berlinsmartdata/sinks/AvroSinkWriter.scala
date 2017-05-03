@@ -114,11 +114,8 @@ class AvroSinkWriter[T <: SpecificRecordBase : ClassTag] extends StreamWriterBas
 }
 
 object AvroSinkWriter {
-
-  lazy val CONF_OUTPUT_SCHEMA = "avro.schema.output"
   lazy val CONF_COMPRESS = FileOutputFormat.COMPRESS
   lazy val CONF_COMPRESS_CODEC = FileOutputFormat.COMPRESS_CODEC
   lazy val CONF_DEFLATE_LEVEL = "avro.deflate.level"
   lazy val CONF_XZ_LEVEL = "avro.xz.level"
-
 }
