@@ -10,7 +10,6 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.s3a.S3AFileSystem
 
-
 object FsTestUtils {
 
   lazy val defaultS3TestBucket = "s3://9-labs"
@@ -68,15 +67,44 @@ object FsTestUtils {
     }
   }
 
-  def cleanUpFilesTestHelper(path: String) {
-    if (new java.io.File(path).exists) {
+  /**
+    * Removes one specific file
+    * @param path
+    */
+  def cleanUpFilesTestHelper(path: String): Unit = {
+    cleanUpFilesTestHelper(Seq(path))
+  }
+
+  /**
+    * Removes a set of specific files
+    * @param paths
+    */
+  def cleanUpFilesTestHelper(paths: Seq[String]) {
+    paths foreach (path => delFile(new File(path)))
+  }
+
+  /**
+    * Removes all regex matched files in a provided directory
+    * @param regex
+    * @param directory
+    */
+  def cleanUp(regex: scala.util.matching.Regex, directory: String): Unit = {
+    new File(directory).listFiles
+      .filter(file => regex.findFirstIn(file.getName).isDefined)
+      .map (delFile(_))
+  }
+
+  private def delFile(file: File) {
+    if (file.exists) {
       try {
-        new java.io.File(path).delete()
+        println(s"Cleaning up test file left behind: $file")
+        file.delete()
       } catch {
         case e: Exception => println(s"Failed to cleanup files after test: ${e.getMessage}")
       }
     }
   }
+
 
   /**
     * Convenience method for Avro file reader
@@ -99,24 +127,5 @@ object FsTestUtils {
     sb.toString
   }
 
-  /**
-    * Convenience method for Avro Stream file reader
-    * @param path
-    * @param schema
-    */
-  def avroStreamFileReader(path: String, schema: Schema): String = {
-
-    val file = new File(path)
-    val datumReader = new GenericDatumReader[GenericRecord](schema)
-    val dataFileReader = new DataFileReader[GenericRecord](file, datumReader)
-
-    var contents: GenericRecord = null
-    lazy val sb = new StringBuilder
-    while (dataFileReader.hasNext) {
-      contents = dataFileReader.next(contents)
-      sb.append(contents)
-    }
-    sb.toString
-  }
 
 }

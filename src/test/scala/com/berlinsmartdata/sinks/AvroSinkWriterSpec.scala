@@ -15,13 +15,11 @@ class AvroSinkWriterSpec extends FlatSpec with Matchers with BeforeAndAfterEach 
   lazy val schema: Schema = WordCountWithTimeAvroFormat.SCHEMA$
   lazy val destinationPath: String = "/tmp/AvroSinkWriterSpec"
   lazy val avroFile = "testAvro.avro"
-  lazy val avroFileCrc = ".testAvro.avro.crc"
   lazy val finalTarget = s"$destinationPath/$avroFile"
 
-  override def beforeEach(): Unit = {
-    super.beforeEach()
-    FsTestUtils.cleanUpFilesTestHelper(finalTarget)
-    FsTestUtils.cleanUpFilesTestHelper(s"$destinationPath/$avroFileCrc")
+  override def afterEach(): Unit = {
+    val avroRegex: scala.util.matching.Regex = s""".avro""".r
+    FsTestUtils.cleanUp(avroRegex, destinationPath)
   }
 
   def initializeWriter(schema: Schema = schema, targetPath: String = finalTarget): AvroSinkWriter[WordCountWithTimeAvroFormat] = {
