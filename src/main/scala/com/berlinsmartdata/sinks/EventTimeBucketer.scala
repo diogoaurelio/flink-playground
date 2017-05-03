@@ -9,9 +9,9 @@ import org.joda.time.{DateTime, DateTimeZone}
 
 trait EventTimeBucketer[T] extends Bucketer[T] {
 
-  var datePartitioning = "yyyy/MM/dd/hh/"
+  private var datePartitioning = "yyyy/MM/dd/HH/"
 
-  def setDatePartitioning(part: String) { datePartitioning = part}
+  def setDatePartitioning(part: String) { this.datePartitioning = part }
 
   override def getBucketPath(clock: Clock, basePath: Path, element: T): Path =
     new Path(basePath + "/" + getDateTime(element))

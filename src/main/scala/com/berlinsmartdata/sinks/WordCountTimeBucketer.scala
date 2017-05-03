@@ -1,10 +1,6 @@
 package com.berlinsmartdata.sinks
 
-import com.berlinsmartdata.model.{EventWithTime, WordCountWithTime}
-import org.apache.flink.streaming.connectors.fs.Clock
-import org.apache.flink.streaming.connectors.fs.bucketing.Bucketer
-import org.apache.hadoop.fs.Path
-import org.joda.time.{DateTime, DateTimeZone}
+import com.berlinsmartdata.model.EventWithTime
 
 import scala.reflect.ClassTag
 import scala.reflect.runtime.{universe => ru}
@@ -40,7 +36,7 @@ class WordCountTimeBucketer[T <: EventWithTime] extends EventTimeBucketer[T] {
 class WordCountTimeBucketerViaReflection[T: TypeTag : ClassTag] extends EventTimeBucketer[T] {
 
   def getEventTime(element: T): Long = {
-    val mirror = scala.reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
+    val mirror = ru.runtimeMirror(getClass.getClassLoader)
     val im = mirror.reflect(element)
     typeOf[T].members.collect {
       case m: MethodSymbol if m.isCaseAccessor =>

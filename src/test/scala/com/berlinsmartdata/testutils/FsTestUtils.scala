@@ -112,17 +112,13 @@ object FsTestUtils {
     * @param schema
     */
   def avroFileReader(path: String, schema: Schema): String = {
-
     val file = new File(path)
     val datumReader = new GenericDatumReader[GenericRecord](schema)
     val dataFileReader = new DataFileReader[GenericRecord](file, datumReader)
 
-
-    var contents: GenericRecord = null
-    lazy val sb = new StringBuilder
+    val sb = new StringBuilder
     while (dataFileReader.hasNext) {
-      contents = dataFileReader.next(contents)
-      sb.append(contents)
+      sb.append(dataFileReader.next())
     }
     sb.toString
   }
