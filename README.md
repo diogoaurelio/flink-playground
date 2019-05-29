@@ -1,20 +1,48 @@
+# Flink Playground
+
 ### Intro
 
 A Flink application project using Scala and SBT.
 
-To run and test your application use SBT invoke: 'sbt run'
 
-In order to run your application from within IntelliJ, you have to select the classpath of the 'mainRunner' module in the run/debug configurations. Simply open 'Run -> Edit configurations...' and then select 'mainRunner' from the Use classpath of module dropbox.
+To run and test your application locally, you can just execute `sbt run` then select the main class that contains the Flink job . 
+
+You can also package the application into a fat jar with `sbt assembly`, then submit it as usual, with something like: 
+
+```
+flink run -c org.example.WordCount /path/to/your/project/my-app/target/scala-2.11/testme-assembly-0.1-SNAPSHOT.jar
+```
+
+
+You can also run your application from within IntelliJ:  select the classpath of the 'mainRunner' module in the run/debug configurations.
+Simply open 'Run -> Edit configurations...' and then select 'mainRunner' from the "Use classpath of module" dropbox. 
+
 
 
 ### Flink setup for hadoop & S3 
 
 
-#### Add Flink conf as environment variable
+#### Add Env variables
 
 To run in intellij, set flink configuration directory as an environmental variable:
 
-FLINK_CONF_DIR=/home/<user>/flink-config
+FLINK_CONF_DIR=/home/<user>/src/main/resources/flink-config
+
+Also in that directory copy and paste that file and substitute the correct path inside of it:
+
+```bash
+cp src/main/resources/flink-config/flink-conf-example.yarn src/main/resources/flink-config/flink-conf.yarn 
+```
+
+Also set core-site for hadoop config:
+
+```bash
+cp src/main/resources/hadoop-config/core-site-example.yarn src/main/resources/hadoop-config/core-site.yarn 
+```
+
+Due to the nature of this repository (playground), best practices are not being followed. For example, unit tests and integration tests or even just local runs are all mixed up. 
+None the less, in case you are interested in experimenting with AWS S3, then add your credentials in `src/main/resources/hadoop-config/core-site.yarn`. This directory is gitignored.
+
 
 
 ### Common issues running examples
@@ -52,12 +80,12 @@ import org.apache.flink.streaming.api.scala._
 ```
 Exception (...) Caused by: java.io.IOException: No file system found with scheme s3, referenced in file URI 's3://YOUR-BUCKET-HERE/flink-basic-read-from-s3.txt'.
 ```
-This is probably due to the fact that you have not specified your hadoop conf in environment variables. go ahead and add environment variable 
+This is probably due to the fact that you have not specified your hadoop conf in environment variables. Go ahead and add environment variable 
 HADOOP_CONF_DIR=/PATH-TO-THIS-REPO/playground/src/main/resources/hadoop-config
 
+In case you have issues with hadoop versions conflicting with S3, [this might be useful](https://stackoverflow.com/questions/43929025/spark-read-s3-using-sc-textfiles3a-bucket-filepath-java-lang-nosuchmethod).
 
-
-# Flink Basics
+# Flink Basics (finally)
 
 Aggregations on Datastreams are different from aggregations on Datasets, as they are meant to be infinite. 
 Thus, it logically follows that one cannot, for example, count all elements in a Datastream.
